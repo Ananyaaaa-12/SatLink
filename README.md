@@ -2,7 +2,7 @@
 
 > **Intelligent Satellite Communication Link Budget and Mission Analysis Platform**
 >
-> 🚧 **Status:** Under Active Development
+> **Status:** Under Active Development
 
 SatLink is an intelligent satellite communication and mission analysis platform designed to simplify the process of analyzing communication links between satellites and ground stations.
 
@@ -10,7 +10,7 @@ The platform enables users to perform end-to-end satellite link budget calculati
 
 ---
 
-## 📖 Problem Statement
+## Problem Statement
 
 Before launching a satellite, engineers must verify that communication between the satellite and the ground station remains reliable throughout the mission. This requires performing a comprehensive **Link Budget Analysis**, which accounts for:
 
@@ -30,7 +30,7 @@ SatLink aims to provide a modern, user-friendly, and open educational platform t
 
 ---
 
-# ✨ Features
+# Features
 
 ## Current Features
 
@@ -48,7 +48,7 @@ SatLink aims to provide a modern, user-friendly, and open educational platform t
 
 ---
 
-## 🚀 Planned Features
+## Planned Features
 
 - Orbit Design Module
 - Ground Station Coverage Analysis
@@ -65,7 +65,7 @@ SatLink aims to provide a modern, user-friendly, and open educational platform t
 
 ---
 
-# 🛠️ Tech Stack
+# Tech Stack
 
 ### Programming Language
 - Python
@@ -87,7 +87,7 @@ SatLink aims to provide a modern, user-friendly, and open educational platform t
 
 ---
 
-# 📂 Project Structure
+# Project Structure
 
 ```text
 SatLink/
@@ -114,7 +114,7 @@ SatLink/
 
 ---
 
-# ⚙️ Installation
+# Installation
 
 Clone the repository
 
@@ -162,7 +162,7 @@ streamlit run app.py
 
 ---
 
-# 📊 Link Budget Parameters
+# Link Budget Parameters
 
 SatLink performs calculations using parameters such as:
 
@@ -182,7 +182,7 @@ SatLink performs calculations using parameters such as:
 
 ---
 
-# 🎯 Objectives
+# Objectives
 
 - Make satellite communication analysis accessible.
 - Provide an educational alternative to commercial software.
@@ -192,7 +192,7 @@ SatLink performs calculations using parameters such as:
 
 ---
 
-# 🗺️ Roadmap
+# Roadmap
 
 ## Phase 1
 - [ ] Project Setup
@@ -218,14 +218,14 @@ SatLink performs calculations using parameters such as:
 
 ---
 
-# 🤝 Contributors
+# Contributors
 
 - **Ananya N Rao**
 - **Kevin Patel**
 
 ---
 
-# 📜 License
+# License
 
 This project is currently under development.
 
@@ -233,7 +233,7 @@ A license will be added in a future release.
 
 ---
 
-# 🌟 Acknowledgements
+# Acknowledgements
 
 This project is inspired by:
 
@@ -244,19 +244,7 @@ This project is inspired by:
 
 ---
 
-# 📬 Contact
-
-Have suggestions or found a bug?
-
-Feel free to open an **Issue** or submit a **Pull Request**.
-
-We welcome contributions that improve SatLink.
-
----
-
-<div align="center">
-
-### 🛰️ Building an accessible platform for satellite communication analysis.
+### Building an accessible platform for satellite communication analysis.
 
 **If you found this project interesting, consider giving it a ⭐ on GitHub!**
 

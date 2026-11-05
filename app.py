@@ -3,7 +3,7 @@ import math
 import numpy as np
 import plotly.graph_objects as go
 
-from modules.calculations.link_budget import calculate_received_power
+from modules.calculations.link_budget import (calculate_received_power, calculate_fspl)
 
 st.set_page_config(
     page_title="SatLink",
@@ -503,6 +503,214 @@ with tab2:
         except (ValueError, OverflowError) as error:
             st.error(f"Waterfall calculation error: {error}")
 
+
+    # --------------------------------------
+    # FREQUENCY SENSITIVITY ANALYSIS
+    # --------------------------------------
+
+    st.divider()
+    st.header("📡 Frequency Sensitivity Analysis")
+
+    st.write(
+        "Analyze how free-space path loss changes "
+        "with frequency at a fixed satellite slant range."
+    )
+
+    freq_min = st.number_input(
+        "Minimum Frequency (GHz)",
+        min_value=0.001,
+        value=1.0,
+        step=0.5,
+        key="freq_min"
+    )
+
+    freq_max = st.number_input(
+        "Maximum Frequency (GHz)",
+        min_value=0.001,
+        value=10.0,
+        step=0.5,
+        key="freq_max"
+    )
+
+    if freq_min >= freq_max:
+        st.error(
+            "Maximum frequency must be greater "
+            "than minimum frequency."
+        )
+
+    elif not math.isfinite(slant_range) or slant_range <= 0:
+        st.error("Slant range must be greater than zero.")
+
+    else:
+        frequencies = np.linspace(
+            freq_min,
+            freq_max,
+            100
+        )
+
+        fspl_values = [
+            calculate_fspl(
+                frequency_hz=float(f) * 1e9,
+                slant_range_m=slant_range * 1000
+            )
+            for f in frequencies
+        ]
+
+        fig_frequency = go.Figure()
+
+        fig_frequency.add_trace(
+            go.Scatter(
+                x=frequencies,
+                y=fspl_values,
+                mode="lines",
+                name="FSPL"
+            )
+        )
+
+        # Current operating point
+        if math.isfinite(frequency) and frequency > 0:
+            current_fspl = calculate_fspl(
+                frequency_hz=frequency * 1e9,
+                slant_range_m=slant_range * 1000
+            )
+
+            fig_frequency.add_trace(
+                go.Scatter(
+                    x=[frequency],
+                    y=[current_fspl],
+                    mode="markers",
+                    marker=dict(size=12),
+                    name="Current Operating Point"
+                )
+            )
+
+        fig_frequency.update_layout(
+            title="FSPL vs. Frequency",
+            xaxis_title="Frequency (GHz)",
+            yaxis_title="Free Space Path Loss (dB)",
+            template="plotly_white",
+            hovermode="x unified"
+        )
+
+        st.plotly_chart(
+            fig_frequency,
+            use_container_width=True
+        )
+
+        if not (freq_min <= frequency <= freq_max):
+            st.info(
+                "The current operating frequency is outside "
+                "the selected graph range."
+            )
+
+
+    # --------------------------------------
+    # COMMUNICATION PERFORMANCE METRICS
+    # --------------------------------------
+
+    st.divider()
+
+    st.header("📡 Communication Performance Metrics")
+
+    st.write(
+        "Receiver noise and link quality metrics "
+        "will be calculated using the communication "
+        "performance backend."
+    )
+
+    noise_col, cn0_col = st.columns(2)
+    ebn0_col, margin_col = st.columns(2)
+
+    with noise_col:
+        st.metric(
+            "Thermal Noise Power",
+            "N/A",
+            help="Receiver thermal noise power in dBm."
+        )
+
+    with cn0_col:
+        st.metric(
+            "Carrier-to-Noise Density (C/N₀)",
+            "N/A",
+            help="Carrier power relative to noise spectral density."
+        )
+
+    with ebn0_col:
+        st.metric(
+            "Energy per Bit to Noise Density (Eb/N₀)",
+            "N/A",
+            help="Signal energy per bit relative to noise density."
+        )
+
+    with margin_col:
+        st.metric(
+            "Link Margin",
+            "N/A",
+            help="Available Eb/N₀ minus required Eb/N₀."
+        )
+
+    st.info(
+        "Communication performance calculations are "
+        "awaiting backend integration."
+    )
+
+    # --------------------------------------
+    # LINK STATUS INDICATOR
+    # --------------------------------------
+
+    st.divider()
+
+    st.header("📶 Link Status")
+
+    # Replace None with the actual calculated margin
+    # when Kevin's backend is integrated.
+    link_margin_db = None
+
+    if link_margin_db is None:
+        st.info(
+            "LINK STATUS UNAVAILABLE — "
+            "Link margin calculation is pending."
+        )
+
+    elif link_margin_db >= 0:
+        st.success(
+            "LINK AVAILABLE — "
+            "Theoretical link margin is non-negative."
+        )
+
+    else:
+        st.error(
+            "LINK BELOW THRESHOLD — "
+            "Theoretical link margin is negative."
+        )
+
+    st.caption(
+        "This is a simplified theoretical link assessment, "
+        "not a guarantee of real-world communication availability."
+    )
+
+    # --------------------------------------
+    # LINK MARGIN VS DISTANCE
+    # --------------------------------------
+
+    st.divider()
+
+    st.header("📉 Link Margin vs. Slant Range")
+
+    st.write(
+        "This graph will show how communication "
+        "link margin changes with satellite distance."
+    )
+
+    st.info(
+        "Link margin graph awaiting backend integration. "
+        "No calculated margin values are available yet."
+    )
+
+    st.caption(
+        "The completed graph will include a horizontal "
+        "0 dB threshold separating positive and negative margins."
+    )
 
 # ==========================================
 # TAB 3 - MISSION COMPARISON

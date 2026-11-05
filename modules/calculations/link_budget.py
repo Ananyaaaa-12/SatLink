@@ -2,9 +2,9 @@
 SatLink Satellite Communication Link Budget & Quality Engine.
 Modules: calculations/link_budget.py
 Covers:
-  - Day 1: FSPL, EIRP, Received Signal Power, Unit Conversions
-  - Day 2: Thermal Noise (kTB), C/N0, Eb/N0, Link Margin
-  - Day 3: Integrated Link Assessment & Slant Distance Sensitivity
+- Day 1: FSPL, EIRP, Received Signal Power, Unit Conversions
+- Day 2: Thermal Noise (kTB), C/N0, Eb/N0, Link Margin
+- Day 3: Integrated Link Assessment & Slant Distance Sensitivity
 """
 
 import math
@@ -14,8 +14,6 @@ from typing import Dict, List, Any
 SPEED_OF_LIGHT = 299792458.0  # m/s
 BOLTZMANN_CONSTANT = 1.380649e-23  # J/K (W/(Hz*K))
 
-
-# --- Day 1: Conversions & Propagation ---
 
 def watts_to_dbw(power_watts: float) -> float:
     """Convert power in Watts to dBW."""
@@ -82,22 +80,11 @@ def calculate_received_power(
     }
 
 
-# --- Day 2: Receiver Noise & Link Quality ---
-
 def calculate_thermal_noise(system_temp_k: float, bandwidth_hz: float) -> Dict[str, float]:
-    """Calculate thermal noise power N = kTB.
-
-    Args:
-        system_temp_k: System equivalent noise temperature in Kelvin (> 0)
-        bandwidth_hz: Noise bandwidth in Hertz (> 0)
-
-    Returns:
-        Dict containing noise power in watts and dBm, plus noise spectral density N0 in dBW/Hz.
-    """
+    """Calculate thermal noise power N = kTB."""
     if system_temp_k <= 0 or bandwidth_hz <= 0:
         raise ValueError("System noise temperature and bandwidth must be strictly positive.")
 
-    # N = k * T * B (Watts)
     noise_watts = BOLTZMANN_CONSTANT * system_temp_k * bandwidth_hz
     noise_dbw = watts_to_dbw(noise_watts)
     noise_dbm = dbw_to_dbm(noise_dbw)
@@ -112,27 +99,17 @@ def calculate_thermal_noise(system_temp_k: float, bandwidth_hz: float) -> Dict[s
 
 
 def calculate_c_n0(received_power_dbw: float, system_temp_k: float) -> float:
-    """Calculate Carrier-to-Noise Density Ratio (C/N0) in dB-Hz.
-
-    Formula:
-        C/N0 = C (dBW) - 10 * log10(k * T)
-    """
+    """Calculate Carrier-to-Noise Density Ratio (C/N0) in dB-Hz."""
     if system_temp_k <= 0:
         raise ValueError("System noise temperature must be positive non-zero.")
-
     n0_dbw = 10.0 * math.log10(BOLTZMANN_CONSTANT * system_temp_k)
     return received_power_dbw - n0_dbw
 
 
 def calculate_eb_n0(c_n0_db_hz: float, bit_rate_bps: float) -> float:
-    """Calculate Energy per Bit to Noise Density Ratio (Eb/N0) in dB.
-
-    Formula:
-        Eb/N0 = C/N0 (dB-Hz) - 10 * log10(Bit Rate)
-    """
+    """Calculate Energy per Bit to Noise Density Ratio (Eb/N0) in dB."""
     if bit_rate_bps <= 0:
         raise ValueError("Bit rate must be strictly positive.")
-
     return c_n0_db_hz - (10.0 * math.log10(bit_rate_bps))
 
 
@@ -140,8 +117,6 @@ def calculate_link_margin(available_eb_n0_db: float, required_eb_n0_db: float) -
     """Calculate Link Margin in dB (Available Eb/N0 - Required Eb/N0)."""
     return available_eb_n0_db - required_eb_n0_db
 
-
-# --- Day 3: Integrated Workflow & Distance Sensitivity ---
 
 def evaluate_link_budget(
     tx_power_watts: float,
@@ -206,10 +181,7 @@ def calculate_distance_sensitivity(
     num_points: int = 50,
     additional_losses_db: float = 0.0,
 ) -> Dict[str, List[float]]:
-    """Evaluate received power and link margin across a range of slant distances.
-
-    Returns structured lists ready for plotting in UI/Streamlit.
-    """
+    """Evaluate received power and link margin across a range of slant distances."""
     if min_slant_range_m <= 0 or max_slant_range_m <= min_slant_range_m:
         raise ValueError("Invalid slant range bounds. Must be positive and max > min.")
     if num_points < 2:

@@ -1,4 +1,7 @@
 import streamlit as st
+import math
+
+from modules.calculations.link_budget import calculate_received_power
 
 st.set_page_config(
     page_title="SatLink",
@@ -31,6 +34,14 @@ altitude = st.sidebar.number_input(
     min_value=0.0,
     value=500.0,
     step=10.0
+)
+# NEW: Satellite Slant Range
+slant_range = st.sidebar.number_input(
+    "Satellite Slant Range (km)",
+    min_value=0.0,
+    value=500.0,
+    step=10.0,
+    help="Distance between the satellite and ground station"
 )
 
 frequency = st.sidebar.number_input(
@@ -116,10 +127,16 @@ def validate_inputs():
             "System losses cannot be negative."
         )
 
-    # Check data rate
+        # Check data rate
     if not math.isfinite(data_rate) or data_rate <= 0:
         errors.append(
             "Data rate must be greater than zero."
+        )
+
+    # Check satellite slant range
+    if not math.isfinite(slant_range) or slant_range < altitude:
+        errors.append(
+            "Slant range must be at least the satellite altitude."
         )
 
     return errors
@@ -154,24 +171,112 @@ st.divider()
 # LINK BUDGET RESULTS DASHBOARD
 # -----------------------------------
 
+
+# -----------------------------------
+# LINK BUDGET RESULTS DASHBOARD
+# -----------------------------------
+
 st.divider()
 
 st.header("📊 Link Budget Results")
 
+# Store results between Streamlit reruns
+if "link_results" not in st.session_state:
+    st.session_state.link_results = None
+
+if "last_inputs" not in st.session_state:
+    st.session_state.last_inputs = None
+
+current_inputs = (
+    mission_name,
+    altitude,
+    slant_range,
+    frequency,
+    tx_power,
+    tx_gain,
+    rx_gain,
+    system_losses,
+    data_rate
+)
+
+# Clear outdated results when inputs change
+if st.session_state.last_inputs != current_inputs:
+    st.session_state.link_results = None
+
+if st.button("Calculate Link Budget"):
+
+    errors = validate_inputs()
+
+    if errors:
+        st.session_state.link_results = None
+
+        for error in errors:
+            st.error(error)
+
+    else:
+        try:
+            # Convert GHz to Hz
+            frequency_hz = frequency * 1e9
+
+            # Convert km to metres
+            slant_range_m = slant_range * 1000
+
+            # Convert dBW to Watts
+            tx_power_watts = 10 ** (tx_power / 10)
+
+            # Call Kevin's calculation engine
+            results = calculate_received_power(
+                tx_power_watts=tx_power_watts,
+                tx_antenna_gain_dbi=tx_gain,
+                rx_antenna_gain_dbi=rx_gain,
+                frequency_hz=frequency_hz,
+                slant_range_m=slant_range_m,
+                additional_losses_db=system_losses
+            )
+
+            st.session_state.link_results = results
+            st.session_state.last_inputs = current_inputs
+
+            st.success(
+                "Link budget calculated successfully!"
+            )
+
+        except (ValueError, OverflowError) as error:
+            st.session_state.link_results = None
+            st.error(f"Calculation error: {error}")
+
+# Display results
+results = st.session_state.link_results
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Free Space Path Loss (FSPL)", "N/A")
+    st.metric(
+        "Free Space Path Loss (FSPL)",
+        f"{results['fspl_db']:.2f} dB"
+        if results is not None else "N/A"
+    )
 
 with col2:
-    st.metric("Received Power", "N/A")
+    st.metric(
+        "Received Power",
+        f"{results['received_power_dbw']:.2f} dBW"
+        if results is not None else "N/A"
+    )
 
 with col3:
-    st.metric("EIRP", "N/A")
+    st.metric(
+        "EIRP",
+        f"{results['eirp_dbw']:.2f} dBW"
+        if results is not None else "N/A"
+    )
 
-st.info(
-    "Calculation engine integration is pending."
-)
+if results is None:
+    st.info(
+        "Enter valid mission parameters and click "
+        "Calculate Link Budget to view results."
+    )
+
 
 st.header("🛰️ Mission Summary")
 

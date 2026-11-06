@@ -4,6 +4,10 @@ import numpy as np
 import plotly.graph_objects as go
 
 from modules.calculations.link_budget import (calculate_received_power, calculate_fspl)
+from modules.calculations.orbit_geometry import (
+    calculate_slant_range,
+    EARTH_RADIUS_KM
+)
 
 st.set_page_config(
     page_title="SatLink",
@@ -23,10 +27,11 @@ st.write("Welcome to the SatLink Mission Analysis Dashboard!")
 # DASHBOARD NAVIGATION
 # -----------------------------------
 
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "🛰️ Mission Configuration",
     "📊 Link Budget Analysis",
-    "⚖️ Mission Comparison"
+    "⚖️ Mission Comparison",
+    "🌍 Orbit & Ground Station"
 ])
 # -----------------------------------
 # MISSION CONFIGURATION SIDEBAR
@@ -1000,4 +1005,267 @@ with tab3:
 
         st.error(
             f"Mission comparison error: {error}"
+        )
+
+
+# ==========================================
+# TAB 4 - ORBIT AND GROUND STATION
+# ==========================================
+
+with tab4:
+
+    st.header("🛰️ Satellite Orbit Configuration")
+
+    orbit_type = st.selectbox(
+        "Orbit Type",
+        ["LEO", "MEO", "GEO"]
+    )
+
+    orbit_altitude = st.number_input(
+        "Satellite Orbit Altitude (km)",
+        min_value=0.0,
+        value=500.0,
+        step=10.0,
+        key="orbit_altitude"
+    )
+
+    inclination = st.number_input(
+        "Orbital Inclination (degrees)",
+        min_value=0.0,
+        max_value=180.0,
+        value=45.0,
+        step=1.0
+    )
+
+    eccentricity = st.number_input(
+        "Orbital Eccentricity",
+        min_value=0.0,
+        max_value=0.999999,
+        value=0.0,
+        step=0.01,
+        format="%.4f"
+    )
+
+    orbit_errors = []
+
+    if orbit_altitude <= 0:
+        orbit_errors.append(
+            "Satellite altitude must be greater than zero."
+        )
+
+    if orbit_type == "LEO" and not (160 <= orbit_altitude < 2000):
+        orbit_errors.append(
+            "LEO altitude should be approximately 160–2000 km."
+        )
+
+    elif orbit_type == "MEO" and not (2000 <= orbit_altitude < 35786):
+        orbit_errors.append(
+            "MEO altitude should be approximately 2000–35786 km."
+        )
+
+    elif orbit_type == "GEO":
+        if abs(orbit_altitude - 35786) > 100:
+            orbit_errors.append(
+                "GEO altitude should be approximately 35,786 km."
+            )
+
+        if abs(inclination) > 0.1 or eccentricity > 0.001:
+            orbit_errors.append(
+                "An ideal GEO orbit requires near-zero "
+                "inclination and eccentricity."
+            )
+
+    if orbit_errors:
+        for error in orbit_errors:
+            st.warning(error)
+    else:
+        st.success("Orbit configuration validated successfully!")
+
+
+    # ==========================================
+    # GROUND STATION CONFIGURATION
+    # ==========================================
+
+    st.divider()
+
+    st.header("📡 Ground Station Configuration")
+
+    ground_station_name = st.text_input(
+        "Ground Station Name",
+        value="SatLink Ground Station",
+        key="ground_station_name"
+    )
+
+    latitude = st.number_input(
+        "Ground Station Latitude (degrees)",
+        min_value=-90.0,
+        max_value=90.0,
+        value=13.35,
+        step=0.01,
+        key="ground_latitude"
+    )
+
+    longitude = st.number_input(
+        "Ground Station Longitude (degrees)",
+        min_value=-180.0,
+        max_value=180.0,
+        value=74.79,
+        step=0.01,
+        key="ground_longitude"
+    )
+
+    min_elevation = st.number_input(
+        "Minimum Elevation Angle (degrees)",
+        min_value=0.0,
+        max_value=90.0,
+        value=10.0,
+        step=1.0,
+        key="minimum_elevation"
+    )
+
+    # --------------------------------------
+    # GROUND STATION VALIDATION
+    # --------------------------------------
+
+    station_errors = []
+
+    if not ground_station_name.strip():
+        station_errors.append(
+            "Ground station name cannot be empty."
+        )
+
+    if not (-90 <= latitude <= 90):
+        station_errors.append(
+            "Latitude must be between -90 and 90 degrees."
+        )
+
+    if not (-180 <= longitude <= 180):
+        station_errors.append(
+            "Longitude must be between -180 and 180 degrees."
+        )
+
+    if not (0 <= min_elevation <= 90):
+        station_errors.append(
+            "Minimum elevation must be between 0 and 90 degrees."
+        )
+
+    if station_errors:
+        for error in station_errors:
+            st.error(error)
+    else:
+        st.success(
+            "Ground station configuration validated successfully!"
+        )
+
+    # ==========================================
+    # SLANT RANGE VS ELEVATION ANGLE
+    # ==========================================
+
+    st.divider()
+
+    st.header("📈 Slant Range vs. Elevation Angle")
+
+    st.write(
+        "This graph shows how the distance between "
+        "the satellite and ground station changes "
+        "with elevation angle."
+    )
+
+    if orbit_errors or station_errors:
+        st.warning(
+            "Correct the orbit and ground station "
+            "inputs before generating the graph."
+        )
+
+    else:
+        R = EARTH_RADIUS_KM
+        h = orbit_altitude
+
+        # Generate elevation angles from 0 to 90 degrees
+        elevation_angles = np.linspace(0, 90, 100)
+
+        slant_ranges = []
+
+        for elevation in elevation_angles:
+
+            elevation_rad = math.radians(
+                float(elevation)
+            )
+
+            # Slant range from spherical-Earth geometry
+            slant_range_km = (
+                math.sqrt(
+                    (R + h) ** 2
+                    - (R * math.cos(elevation_rad)) ** 2
+                )
+                - R * math.sin(elevation_rad)
+            )
+
+            slant_ranges.append(slant_range_km)
+
+        # Create interactive Plotly graph
+        elevation_fig = go.Figure()
+
+        elevation_fig.add_trace(
+            go.Scatter(
+                x=elevation_angles,
+                y=slant_ranges,
+                mode="lines",
+                name="Slant Range",
+                line=dict(width=3)
+            )
+        )
+
+        # Ground station minimum elevation limit
+        elevation_fig.add_vline(
+            x=min_elevation,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Minimum Elevation"
+        )
+
+        elevation_fig.update_layout(
+            title="Slant Range vs. Elevation Angle",
+            xaxis_title="Elevation Angle (degrees)",
+            yaxis_title="Slant Range (km)",
+            template="plotly_white",
+            hovermode="x unified"
+        )
+
+        st.plotly_chart(
+            elevation_fig,
+            use_container_width=True
+        )
+
+        # Display important geometric cases
+        zenith_range = calculate_slant_range(
+            h, 0
+        )
+
+        horizon_angle = math.degrees(
+            math.acos(R / (R + h))
+        )
+
+        horizon_range = calculate_slant_range(
+            h, horizon_angle
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "Zenith Slant Range",
+                f"{zenith_range:.2f} km"
+            )
+
+        with col2:
+            st.metric(
+                "Horizon Slant Range",
+                f"{horizon_range:.2f} km"
+            )
+
+        st.caption(
+            "Assumptions: spherical Earth (R = 6371 km), "
+            "ground station at sea level, no atmospheric "
+            "refraction, and geometric line of sight."
         )

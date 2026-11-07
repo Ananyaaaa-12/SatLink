@@ -3,7 +3,12 @@ import math
 import numpy as np
 import plotly.graph_objects as go
 
-from modules.calculations.link_budget import (calculate_received_power, calculate_fspl)
+from modules.calculations.link_budget import (
+    calculate_received_power,
+    calculate_fspl,
+    evaluate_link_budget,
+    calculate_distance_sensitivity,
+)
 
 st.set_page_config(
     page_title="SatLink",
@@ -605,112 +610,222 @@ with tab2:
 
 
     # --------------------------------------
-    # COMMUNICATION PERFORMANCE METRICS
+    # COMMUNICATION PERFORMANCE INPUTS
     # --------------------------------------
 
     st.divider()
 
+    st.subheader("⚙️ Receiver and Link Quality Settings")
+
+    noise_col1, noise_col2, noise_col3 = st.columns(3)
+
+    with noise_col1:
+        system_temp = st.number_input(
+            "System Noise Temperature (K)",
+            min_value=1.0,
+            value=290.0,
+            step=10.0,
+            key="system_noise_temperature"
+        )
+
+    with noise_col2:
+        noise_bandwidth_mhz = st.number_input(
+            "Receiver Noise Bandwidth (MHz)",
+            min_value=0.001,
+            value=1.0,
+            step=0.1,
+            key="receiver_noise_bandwidth"
+        )
+
+    with noise_col3:
+        required_eb_n0 = st.number_input(
+            "Required Eb/N₀ (dB)",
+            value=10.0,
+            step=1.0,
+            key="required_eb_n0"
+        )
+
+    noise_bandwidth_hz = noise_bandwidth_mhz * 1e6
+
+    
+    # --------------------------------------
+    # COMMUNICATION PERFORMANCE METRICS
+    # --------------------------------------
+
     st.header("📡 Communication Performance Metrics")
 
     st.write(
-        "Receiver noise and link quality metrics "
-        "will be calculated using the communication "
-        "performance backend."
+        "Calculated receiver noise and communication "
+        "performance using the link budget backend."
     )
 
-    noise_col, cn0_col = st.columns(2)
-    ebn0_col, margin_col = st.columns(2)
+    performance_result = None
 
-    with noise_col:
-        st.metric(
-            "Thermal Noise Power",
-            "N/A",
-            help="Receiver thermal noise power in dBm."
+    try:
+        if not math.isfinite(data_rate) or data_rate <= 0:
+            raise ValueError("Data rate must be positive.")
+
+        performance_result = evaluate_link_budget(
+            tx_power_watts=10 ** (tx_power / 10),
+            tx_antenna_gain_dbi=tx_gain,
+            rx_antenna_gain_dbi=rx_gain,
+            frequency_hz=frequency * 1e9,
+            slant_range_m=slant_range * 1000,
+            system_temp_k=system_temp,
+            bandwidth_hz=noise_bandwidth_hz,
+            bit_rate_bps=data_rate * 1e6,
+            required_eb_n0_db=required_eb_n0,
+            additional_losses_db=system_losses
         )
 
-    with cn0_col:
-        st.metric(
-            "Carrier-to-Noise Density (C/N₀)",
-            "N/A",
-            help="Carrier power relative to noise spectral density."
-        )
+    except (ValueError, OverflowError, ZeroDivisionError) as error:
+        st.error(f"Communication performance error: {error}")
 
-    with ebn0_col:
-        st.metric(
-            "Energy per Bit to Noise Density (Eb/N₀)",
-            "N/A",
-            help="Signal energy per bit relative to noise density."
-        )
+    if performance_result is not None:
 
-    with margin_col:
-        st.metric(
-            "Link Margin",
-            "N/A",
-            help="Available Eb/N₀ minus required Eb/N₀."
-        )
+        noise_col, cn0_col = st.columns(2)
+        ebn0_col, margin_col = st.columns(2)
 
-    st.info(
-        "Communication performance calculations are "
-        "awaiting backend integration."
-    )
+        with noise_col:
+            st.metric(
+                "Thermal Noise Power",
+                f"{performance_result['noise_power_dbm']:.2f} dBm"
+            )
 
+        with cn0_col:
+            st.metric(
+                "Carrier-to-Noise Density (C/N₀)",
+                f"{performance_result['c_n0_db_hz']:.2f} dB-Hz"
+            )
+
+        with ebn0_col:
+            st.metric(
+                "Energy per Bit to Noise Density (Eb/N₀)",
+                f"{performance_result['eb_n0_db']:.2f} dB"
+            )
+
+        with margin_col:
+            st.metric(
+                "Link Margin",
+                f"{performance_result['link_margin_db']:.2f} dB"
+            )
+
+    else:
+        st.info("Valid inputs are required to calculate link quality.")
+
+    
     # --------------------------------------
     # LINK STATUS INDICATOR
     # --------------------------------------
 
     st.divider()
-
     st.header("📶 Link Status")
 
-    # Replace None with the actual calculated margin
-    # when Kevin's backend is integrated.
-    link_margin_db = None
-
-    if link_margin_db is None:
+    if performance_result is None:
         st.info(
             "LINK STATUS UNAVAILABLE — "
-            "Link margin calculation is pending."
-        )
-
-    elif link_margin_db >= 0:
-        st.success(
-            "LINK AVAILABLE — "
-            "Theoretical link margin is non-negative."
+            "Enter valid communication parameters."
         )
 
     else:
-        st.error(
-            "LINK BELOW THRESHOLD — "
-            "Theoretical link margin is negative."
-        )
+        link_margin_db = performance_result["link_margin_db"]
+
+        if link_margin_db >= 0:
+            st.success(
+                f"LINK AVAILABLE — Margin: {link_margin_db:.2f} dB"
+            )
+        else:
+            st.error(
+                f"LINK BELOW THRESHOLD — Margin: {link_margin_db:.2f} dB"
+            )
 
     st.caption(
         "This is a simplified theoretical link assessment, "
         "not a guarantee of real-world communication availability."
     )
 
+
+    
     # --------------------------------------
-    # LINK MARGIN VS DISTANCE
+    # LINK MARGIN VS SLANT RANGE
     # --------------------------------------
 
     st.divider()
-
     st.header("📉 Link Margin vs. Slant Range")
 
     st.write(
-        "This graph will show how communication "
-        "link margin changes with satellite distance."
+        "Analyze how theoretical link margin changes "
+        "as the satellite-to-ground distance increases."
     )
 
-    st.info(
-        "Link margin graph awaiting backend integration. "
-        "No calculated margin values are available yet."
+    margin_max_range = st.number_input(
+        "Maximum Distance for Margin Analysis (km)",
+        min_value=100.0,
+        value=3000.0,
+        step=100.0,
+        key="margin_max_range"
     )
 
-    st.caption(
-        "The completed graph will include a horizontal "
-        "0 dB threshold separating positive and negative margins."
-    )
+    if performance_result is None:
+        st.warning("Correct the communication inputs first.")
+
+    elif margin_max_range <= slant_range:
+        st.warning(
+            "Maximum distance must exceed current slant range."
+        )
+
+    else:
+        try:
+            sensitivity = calculate_distance_sensitivity(
+                tx_power_watts=10 ** (tx_power / 10),
+                tx_antenna_gain_dbi=tx_gain,
+                rx_antenna_gain_dbi=rx_gain,
+                frequency_hz=frequency * 1e9,
+                system_temp_k=system_temp,
+                bandwidth_hz=noise_bandwidth_hz,
+                bit_rate_bps=data_rate * 1e6,
+                required_eb_n0_db=required_eb_n0,
+                min_slant_range_m=slant_range * 1000,
+                max_slant_range_m=margin_max_range * 1000,
+                num_points=100,
+                additional_losses_db=system_losses
+            )
+
+            margin_fig = go.Figure()
+
+            margin_fig.add_trace(
+                go.Scatter(
+                    x=sensitivity["slant_ranges_km"],
+                    y=sensitivity["link_margins_db"],
+                    mode="lines",
+                    name="Link Margin",
+                    line=dict(width=3)
+                )
+            )
+
+            margin_fig.add_hline(
+                y=0,
+                line_dash="dash",
+                line_color="red",
+                annotation_text="0 dB Threshold"
+            )
+
+            margin_fig.update_layout(
+                title="Link Margin vs. Slant Range",
+                xaxis_title="Slant Range (km)",
+                yaxis_title="Link Margin (dB)",
+                template="plotly_white",
+                hovermode="x unified"
+            )
+
+            st.plotly_chart(
+                margin_fig,
+                use_container_width=True
+            )
+
+        except (ValueError, OverflowError, ZeroDivisionError) as error:
+            st.error(f"Distance sensitivity error: {error}")
+
 
 # ==========================================
 # TAB 3 - MISSION COMPARISON
